@@ -57,7 +57,7 @@ export const RegisterPerfil = ({ navigation }: any) => {
                 born_date: bornDate.trim(),
               };
 
-              // Guardar los datos en AsyncStorage (o enviarlos a un backend)
+              // Guardar los datos en AsyncStorage
               await AsyncStorage.setItem('user_profile', JSON.stringify(profileData));
 
               Alert.alert('Éxito', 'Perfil guardado exitosamente.');

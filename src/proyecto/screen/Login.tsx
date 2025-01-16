@@ -16,6 +16,23 @@ export const Login = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+
+  const checkUserProfile = async () => {
+    try {
+      const userProfileString = await AsyncStorage.getItem('user_profile');
+      if (!userProfileString) return false;
+  
+      const userProfile = JSON.parse(userProfileString);
+      return userProfile &&
+        userProfile.nombre &&
+        userProfile.apellido; // Verifica campos mínimos
+    } catch (error) {
+      console.error('Error al verificar el perfil:', error);
+      return false;
+    }
+  };
+  
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Por favor, completa todos los campos.');
@@ -25,34 +42,45 @@ export const Login = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      console.time('API Response Time'); // Inicio del temporizador
-
-      const startTime = Date.now(); // Marca de tiempo inicial
+      // 1. Login request
       const response = await axios.post(
         'https://bkd-general.getmab.com/login_tourism/',
         { email, password }
       );
-      const endTime = Date.now(); // Marca de tiempo final
-
-      console.timeEnd('API Response Time'); // Fin del temporizador
-      const responseTime = (endTime - startTime) / 1000; // Tiempo en segundos
 
       const { access_token } = response.data;
-
+      
+      
+      // 2. Guardar token
       await AsyncStorage.setItem('access_token', access_token);
 
-      const userProfile = await AsyncStorage.getItem('user_profile');
+      // 3. Verificar perfil de usuario
+      const hasProfile = await checkUserProfile();
+      console.log(hasProfile);
 
-      Alert.alert(
-        'Éxito',
-        `Inicio de sesión exitoso.`
-      );
-
-      if (userProfile) {
-        navigation.replace('TabNavigator');
+      // 4. Navegar según el estado del perfil
+      if (hasProfile !== null) {
+        Alert.alert(
+          'Éxito',
+          'Inicio de sesión exitoso',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.replace('TabNavigator')
+            }
+          ]
+        );
       } else {
-        Alert.alert('Información', 'Completa tu perfil antes de continuar.');
-        navigation.replace('Perfil');
+        Alert.alert(
+          'Información',
+          'Por favor, completa tu perfil antes de continuar',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.replace('Perfil')
+            }
+          ]
+        );
       }
     } catch (error) {
       Alert.alert(

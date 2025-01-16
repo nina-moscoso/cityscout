@@ -35,7 +35,6 @@ export const Explorar = () => {
   const getStorageKey = (placeId: number, type: 'favorite' | 'rating') =>
     `place_${placeId}_${type}`;
 
-  // Load favorites and ratings from storage
   useEffect(() => {
     const loadMappings = async () => {
       try {

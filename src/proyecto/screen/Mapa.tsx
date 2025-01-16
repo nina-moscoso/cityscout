@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, Alert, ActivityIndicator, PermissionsAndroid, Platform } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import { turisticPlaces } from '../../data/turisticPlaces';
 
@@ -184,6 +184,7 @@ export const Mapa = () => {
             description={place.history}
           />
         ))}
+        
       </MapView>
     </View>
   );

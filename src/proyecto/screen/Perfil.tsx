@@ -7,18 +7,20 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-export const Perfil = () => {
+export const Perfil = ({ navigation   }) => {
   const [profileData, setProfileData] = useState({
     username: '',
     first_name: '',
     last_name: '',
     born_date: '',
   });
-  const [tempProfileData, setTempProfileData] = useState(profileData); // Estado temporal para edición
+  
+  const [tempProfileData, setTempProfileData] = useState(profileData);
   const [isEditing, setIsEditing] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -28,7 +30,7 @@ export const Perfil = () => {
       if (storedProfile) {
         const parsedProfile = JSON.parse(storedProfile);
         setProfileData(parsedProfile);
-        setTempProfileData(parsedProfile); // Sincroniza el estado temporal
+        setTempProfileData(parsedProfile);
       }
     } catch (error) {
       console.error('Error al cargar el perfil:', error);
@@ -38,59 +40,103 @@ export const Perfil = () => {
   const saveProfile = async () => {
     try {
       await AsyncStorage.setItem('user_profile', JSON.stringify(tempProfileData));
-      setProfileData(tempProfileData); // Actualiza el perfil con los nuevos datos
-      Alert.alert('Éxito', 'Perfil actualizado exitosamente.');
+      setProfileData(tempProfileData);
+      Alert.alert('¡Éxito!', 'Tu perfil ha sido actualizado.');
       setIsEditing(false);
     } catch (error) {
-      console.error('Error al guardar el perfil:', error);
-      Alert.alert('Error', 'No se pudo actualizar el perfil. Inténtalo nuevamente.');
+      Alert.alert('Error', 'No se pudo actualizar el perfil. Por favor, intenta nuevamente.');
+    }
+  };
+  const logout = async () => {
+    try {
+      // Obtener todas las keys en AsyncStorage
+      const keys = await AsyncStorage.getAllKeys();
+      
+      // Filtrar las keys que queremos eliminar (todas excepto user_profile)
+      const keysToRemove = keys.filter(key => key !== 'user_profile' && key !== 'user' && key!=='events' && key!=='favorite');
+      
+      // Eliminar solo las keys seleccionadas 
+      await AsyncStorage.multiRemove(keysToRemove);
+    } catch (error) {
+      console.error('Error durante el logout:', error);
+      throw error;
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigation.replace('Splash'); // O la navegación que uses
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
   useEffect(() => {
     loadProfile();
   }, []);
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Mi Perfil</Text>
+      <View style={styles.header}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {profileData.first_name && profileData.last_name
+                ? `${profileData.first_name[0]}${profileData.last_name[0]}`
+                : '??'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.headerTitle}>Mi Perfil</Text>
+      </View>
 
       {isEditing ? (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre de usuario"
-            value={tempProfileData.username}
-            onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, username: text }))}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre"
-            value={tempProfileData.first_name}
-            onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, first_name: text }))}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Apellido"
-            value={tempProfileData.last_name}
-            onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, last_name: text }))}
-          />
-          <TouchableOpacity
-            style={styles.datePickerButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.datePickerText}>
-              {tempProfileData.born_date || 'Seleccionar Fecha de Nacimiento'}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.formContainer}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nombre de usuario</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ingresa tu nombre de usuario"
+              value={tempProfileData.username}
+              onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, username: text }))}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nombre</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ingresa tu nombre"
+              value={tempProfileData.first_name}
+              onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, first_name: text }))}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Apellido</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ingresa tu apellido"
+              value={tempProfileData.last_name}
+              onChangeText={(text) => setTempProfileData((prev) => ({ ...prev, last_name: text }))}
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Fecha de nacimiento</Text>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.datePickerText}>
+                {tempProfileData.born_date || 'Seleccionar fecha'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {showDatePicker && (
             <DateTimePicker
-              value={
-                tempProfileData.born_date
-                  ? new Date(tempProfileData.born_date)
-                  : new Date()
-              }
+              value={tempProfileData.born_date ? new Date(tempProfileData.born_date) : new Date()}
               mode="date"
               display="default"
               onChange={(event, selectedDate) => {
@@ -107,44 +153,59 @@ export const Perfil = () => {
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.button, styles.cancelButton]}
               onPress={() => {
-                setTempProfileData(profileData); // Restaura los datos originales
+                setTempProfileData(profileData);
                 setIsEditing(false);
               }}
             >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
+              <Text style={styles.buttonText}>Cancelar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={saveProfile}>
-              <Text style={styles.saveButtonText}>Guardar</Text>
+            <TouchableOpacity
+              style={[styles.button, styles.saveButton]}
+              onPress={saveProfile}
+            >
+              <Text style={styles.buttonText}>Guardar</Text>
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       ) : (
-        <>
-          <View style={styles.profileRow}>
-            <Text style={styles.label}>Usuario:</Text>
-            <Text style={styles.value}>{profileData.username}</Text>
+        <View style={styles.profileContainer}>
+          <View style={styles.infoCard}>
+            <View style={styles.profileRow}>
+              <Text style={styles.label}>Usuario</Text>
+              <Text style={styles.value}>{profileData.username}</Text>
+            </View>
+            <View style={styles.profileRow}>
+              <Text style={styles.label}>Nombre</Text>
+              <Text style={styles.value}>{profileData.first_name}</Text>
+            </View>
+            <View style={styles.profileRow}>
+              <Text style={styles.label}>Apellido</Text>
+              <Text style={styles.value}>{profileData.last_name}</Text>
+            </View>
+            <View style={styles.profileRow}>
+              <Text style={styles.label}>Fecha de Nacimiento</Text>
+              <Text style={styles.value}>{profileData.born_date}</Text>
+            </View>
           </View>
-          <View style={styles.profileRow}>
-            <Text style={styles.label}>Nombre:</Text>
-            <Text style={styles.value}>{profileData.first_name}</Text>
-          </View>
-          <View style={styles.profileRow}>
-            <Text style={styles.label}>Apellido:</Text>
-            <Text style={styles.value}>{profileData.last_name}</Text>
-          </View>
-          <View style={styles.profileRow}>
-            <Text style={styles.label}>Fecha de Nacimiento:</Text>
-            <Text style={styles.value}>{profileData.born_date}</Text>
-          </View>
+
           <TouchableOpacity
-            style={styles.editButton}
+            style={[styles.button, styles.editButton]}
             onPress={() => setIsEditing(true)}
           >
-            <Text style={styles.editButtonText}>Editar Perfil</Text>
+            <Text style={styles.buttonText}>Editar Perfil</Text>
           </TouchableOpacity>
-        </>
+
+          <TouchableOpacity
+            style={[styles.button, styles.logoutButton]}
+            onPress={handleLogout}
+          >
+            <Text style={[styles.buttonText, styles.logoutButtonText]}>
+              Cerrar Sesión
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </ScrollView>
   );
@@ -153,94 +214,138 @@ export const Perfil = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#F5F5F5',
   },
   header: {
+    backgroundColor: '#116B91',
+    paddingTop: 40,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 10,
+  },
+  avatarContainer: {
+    padding: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 50,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E1E1E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#116B91',
-    textAlign: 'center',
+  },
+  profileContainer: {
+    padding: 20,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
     marginBottom: 20,
   },
-  profileRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DDD',
+  formContainer: {
+    padding: 20,
   },
-  label: {
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E1E1E1',
+    borderRadius: 10,
+    padding: 15,
     fontSize: 16,
     color: '#333',
-    fontWeight: 'bold',
+  },
+  profileRow: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
   value: {
     fontSize: 16,
-    color: '#666',
-  },
-  input: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
   },
   datePickerButton: {
-    backgroundColor: '#E5E5EA',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E1E1E1',
+    borderRadius: 10,
+    padding: 15,
   },
   datePickerText: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  button: {
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   cancelButton: {
-    backgroundColor: '#FF6347',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    backgroundColor: '#FF6B6B',
     flex: 1,
     marginRight: 8,
   },
-  cancelButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 16,
-  },
   saveButton: {
     backgroundColor: '#116B91',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     flex: 1,
     marginLeft: 8,
   },
-  saveButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 16,
-  },
   editButton: {
     backgroundColor: '#116B91',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: 'center',
+    marginTop: 10,
   },
-  editButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  logoutButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+    marginTop: 10,
+  },
+  logoutButtonText: {
+    color: '#FF6B6B',
   },
 });
